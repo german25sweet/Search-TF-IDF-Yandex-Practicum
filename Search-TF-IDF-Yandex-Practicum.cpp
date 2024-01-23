@@ -20,9 +20,29 @@ string ReadLine() {
 int ReadLineWithNumber() {
     int result = 0;
     cin >> result;
-    ReadLine();
+    cin.ignore();
     return result;
 }
+
+vector<int> ReadLineWithNumbers() {
+    vector<int> ratings;
+    int result = 0;
+
+    //while
+    //cin >> result;
+
+    //ReadLine();
+    return ratings;
+}
+
+
+
+
+int ComputeAverageRating(const vector<int>& ratings) {
+    return 0;
+}
+
+
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -48,6 +68,7 @@ vector<string> SplitIntoWords(const string& text) {
 struct Document {
     int id;
     double relevance;
+    //int raiting;
 };
 
 class SearchServer {
