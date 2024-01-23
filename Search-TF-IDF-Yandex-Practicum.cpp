@@ -117,7 +117,7 @@ private:
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
-            if (![&](const string& word) { return stop_words_.count(word) > 0; }(word)) {
+            if (![&](const string& word) { return stop_words_.count(word) > 0;} (word) ) {
                 words.push_back(word);
             }
         }
@@ -141,7 +141,7 @@ private:
         map<int, double> matched_documents;
         map<string, map<int, double>> relevant_documents;
 
-        for (auto & query_word : query.query_words_)
+        for (auto& query_word : query.query_words_)
         {
             if (documents_.count(query_word) > 0)
             {
@@ -149,7 +149,7 @@ private:
             }
         }
 
-        for (auto & minus_word : query.minus_words_)
+        for (auto& minus_word : query.minus_words_)
         {
             if (relevant_documents.count(minus_word) > 0)
             {
@@ -157,9 +157,9 @@ private:
             }
         }
 
-        for (auto &[query_word, relev_pairs] : relevant_documents)
+        for (auto& [query_word, relev_pairs] : relevant_documents)
         {
-            for (auto &[document_id, tf_value] : relev_pairs)
+            for (auto& [document_id, tf_value] : relev_pairs)
             {
                 matched_documents[document_id] += tf_value * log(document_count_ / static_cast<double>(relev_pairs.size()));
             }
@@ -184,9 +184,7 @@ SearchServer CreateSearchServer() {
 int main() {
 
     const SearchServer search_server = CreateSearchServer();
-
     const string query = ReadLine();
-
     const auto search_result = search_server.FindTopDocuments(query);
 
     for (const auto& [document_id, relevance] : search_result) {
