@@ -1,7 +1,8 @@
 ﻿#include <algorithm>
+#include <cmath>
 #include <iostream>
-#include <set>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,7 +47,7 @@ vector<string> SplitIntoWords(const string& text) {
 
 struct Document {
     int id;
-    int relevance;
+    double relevance;
 };
 
 class SearchServer {
@@ -61,35 +62,51 @@ public:
 
     void AddDocument(int document_id, const string& document) {
 
+        ++document_count_;
+
         const vector<string> words = SplitIntoWordsNoStop(document);
 
-        for (const auto& word : words)
-        {
-            documents_[word].insert(document_id);
+        std::map<std::string, int> countMap;
+
+        for (const auto& word : words) {
+            countMap[word]++;
         }
 
-        ++document_count_;
+        for (const auto& pair : countMap) {
+
+            documents_[pair.first][document_id] = pair.second / static_cast<double>(words.size());
+        }
     }
 
     vector<Document> FindTopDocuments(const string& raw_query) const {
 
         auto matched_documents = FindAllDocuments(ParseQuery(raw_query));
 
-        sort(matched_documents.begin(), matched_documents.end(),
-            [](const Document& lhs, const Document& rhs) {
-                return lhs.relevance > rhs.relevance;
-            });
-        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
-            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+        vector<Document> matched_documents2;
+        matched_documents2.reserve(matched_documents.size());
+
+        for (auto& s : matched_documents)
+        {
+            matched_documents2.push_back({ s.first, s.second });
         }
-        return matched_documents;
+
+        sort(matched_documents2.begin(), matched_documents2.end(),
+            [](const Document& first_doc, const Document& second_doc) {
+                return first_doc.relevance > second_doc.relevance;
+            });
+
+        if (static_cast<int>(matched_documents2.size()) > MAX_RESULT_DOCUMENT_COUNT) {
+            matched_documents2.resize(MAX_RESULT_DOCUMENT_COUNT);
+        }
+
+        return matched_documents2;
     }
 
 private:
 
     int document_count_ = 0;
 
-    map<string, set<int>> documents_;
+    map<string, map<int, double>> documents_;
     set<string> stop_words_;
 
     struct Query {
@@ -120,37 +137,36 @@ private:
         return { query_words, minus_words };
     }
 
-    vector<Document> FindAllDocuments(const Query& query) const {
-        vector<Document> matched_documents;
+    map<int,double> FindAllDocuments(const Query& query) const {
+        map<int, double> matched_documents;
 
-        map<int, int> doc_relev;
-        for (const auto& [word, documents] : documents_) {
+        map<string, map<int, double>> true_documents_;
 
-            if (query.query_words_.count(word))
-            {
-                for (auto document : documents)
-                {
-                    doc_relev[document]++;
-                }
-            }
-        }
-
-        for (const auto& [word, documents] : documents_) {
-
-            if (query.minus_words_.count(word))
-            {
-                for (auto document : documents)
-                {
-                    doc_relev[document] = 0;
-                }
-            }
-        }
-
-        for (auto& doc_pair : doc_relev)
+        for (auto &word : query.query_words_)
         {
-            if (doc_pair.second > 0) {
-                matched_documents.push_back({ doc_pair.first, doc_pair.second });
+            if (documents_.count(word) > 0)
+            {
+                true_documents_[word] = documents_.at(word);
             }
+        }
+
+        for (auto &word : query.minus_words_)
+        {
+            if (true_documents_.count(word) > 0)
+            {
+                true_documents_.erase(word);
+            }
+        }
+
+        for (auto &[query_word, relev_pairs] : true_documents_)
+
+        {
+            for (auto &[document_id, tf_value] : relev_pairs)
+            {
+
+                matched_documents[document_id] += tf_value * log(document_count_ / static_cast<double>(relev_pairs.size()));
+            }
+
         }
         return matched_documents;
     }
@@ -161,7 +177,6 @@ SearchServer CreateSearchServer() {
     search_server.SetStopWords(ReadLine());
 
     const int document_count = ReadLineWithNumber();
-
 
     for (int document_id = 0; document_id < document_count; ++document_id) {
         search_server.AddDocument(document_id, ReadLine());
@@ -176,8 +191,12 @@ int main() {
 
     const string query = ReadLine();
 
-    for (const auto& [document_id, relevance] : search_server.FindTopDocuments(query)) {
+    const auto search_result = search_server.FindTopDocuments(query);
+
+    for (const auto& [document_id, relevance] : search_result) {
         cout << "{ document_id = "s << document_id << ", "
             << "relevance = "s << relevance << " }"s << endl;
     }
+
+    return 0;
 }
