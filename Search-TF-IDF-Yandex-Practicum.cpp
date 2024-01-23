@@ -28,11 +28,21 @@ vector<int> ReadLineWithNumbers() {
     vector<int> ratings;
     int result = 0;
 
-    //while
-    //cin >> result;
-
-    //ReadLine();
+    while (cin >> result)
+    {
+        ratings.push_back(result);
+    }
     return ratings;
+}
+
+int ComputeAverageRating(const vector<int>& ratings) {
+    int sum = 0;
+    for (auto number : ratings)
+    {
+        sum += number;
+    }
+
+    return sum / static_cast<int>(ratings.size());
 }
 
 
@@ -81,9 +91,11 @@ public:
         }
     }
 
-    void AddDocument(int document_id, const string& document) {
+    void AddDocument(int document_id, const string& document, vector<int> ratings) {
 
         ++document_count_;
+
+        int raiting = ComputeAverageRating(ratings);
 
         const vector<string> words = SplitIntoWordsNoStop(document);
 
@@ -200,7 +212,7 @@ SearchServer CreateSearchServer() {
     const int document_count = ReadLineWithNumber();
 
     for (int document_id = 0; document_id < document_count; ++document_id) {
-        search_server.AddDocument(document_id, ReadLine());
+        search_server.AddDocument(document_id, ReadLine(),ReadLineWithNumbers());
     }
 
     return search_server;
