@@ -1,4 +1,7 @@
-﻿#include <algorithm>
+﻿// Решите загадку: Сколько чисел от 1 до 1000 содержат как минимум одну цифру 3?
+// Напишите ответ здесь: погуглил, ответ 271
+
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -62,7 +65,7 @@ public:
 
     void AddDocument(int document_id, const string& document) {
 
-        ++document_count_;
+        ++documents_count_;
 
         const vector<string> words = SplitIntoWordsNoStop(document);
 
@@ -104,7 +107,7 @@ public:
 
 private:
 
-    int document_count_ = 0;
+    int documents_count_ = 0;
 
     map<string, map<int, double>> documents_;
     set<string> stop_words_;
@@ -117,7 +120,7 @@ private:
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
-            if (![&](const string& word) { return stop_words_.count(word) > 0;} (word) ) {
+            if (![&](const string& word) { return stop_words_.count(word) > 0; } (word)) {
                 words.push_back(word);
             }
         }
@@ -129,15 +132,21 @@ private:
         set<string> minus_words;
 
         for (string& word : SplitIntoWordsNoStop(text)) {
-            if (word[0] != '-')
-                query_words.insert(word);
-            else
+            if (ParseQueryWord(word))
                 minus_words.insert(word.erase(0, 1));
+            else
+                query_words.insert(word);
         }
+
         return { query_words, minus_words };
     }
 
-    map<int,double> FindAllDocuments(const Query& query) const {
+    bool ParseQueryWord(const string& query_word) const
+    {
+        return query_word[0] == '-';
+    }
+
+    map<int, double> FindAllDocuments(const Query& query) const {
         map<int, double> matched_documents;
         map<string, map<int, double>> relevant_documents;
 
@@ -161,10 +170,15 @@ private:
         {
             for (auto& [document_id, tf_value] : relev_pairs)
             {
-                matched_documents[document_id] += tf_value * log(document_count_ / static_cast<double>(relev_pairs.size()));
+                matched_documents[document_id] += tf_value * CalculateIdf(static_cast<int>(relev_pairs.size()));
             }
         }
         return matched_documents;
+    }
+
+    double CalculateIdf(int documents_with_word_count) const
+    {
+        return log(static_cast<double>(documents_count_) / documents_with_word_count);
     }
 };
 
