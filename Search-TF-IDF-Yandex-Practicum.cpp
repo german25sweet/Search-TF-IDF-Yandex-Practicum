@@ -66,40 +66,40 @@ public:
 
         const vector<string> words = SplitIntoWordsNoStop(document);
 
-        std::map<std::string, int> countMap;
+        std::map<std::string, int> word_count_map;
 
         for (const auto& word : words) {
-            countMap[word]++;
+            word_count_map[word]++;
         }
 
-        for (const auto& pair : countMap) {
+        for (const auto& [word, count] : word_count_map) {
 
-            documents_[pair.first][document_id] = pair.second / static_cast<double>(words.size());
+            documents_[word][document_id] = count / static_cast<double>(words.size());
         }
     }
 
     vector<Document> FindTopDocuments(const string& raw_query) const {
 
-        auto matched_documents = FindAllDocuments(ParseQuery(raw_query));
+        auto matched_documents_map = FindAllDocuments(ParseQuery(raw_query));
 
-        vector<Document> matched_documents2;
-        matched_documents2.reserve(matched_documents.size());
+        vector<Document> matched_documents_vector;
+        matched_documents_vector.reserve(matched_documents_map.size());
 
-        for (auto& s : matched_documents)
+        for (auto& [document_id, relevance] : matched_documents_map)
         {
-            matched_documents2.push_back({ s.first, s.second });
+            matched_documents_vector.push_back({ document_id, relevance });
         }
 
-        sort(matched_documents2.begin(), matched_documents2.end(),
+        sort(matched_documents_vector.begin(), matched_documents_vector.end(),
             [](const Document& first_doc, const Document& second_doc) {
                 return first_doc.relevance > second_doc.relevance;
             });
 
-        if (static_cast<int>(matched_documents2.size()) > MAX_RESULT_DOCUMENT_COUNT) {
-            matched_documents2.resize(MAX_RESULT_DOCUMENT_COUNT);
+        if (static_cast<int>(matched_documents_vector.size()) > MAX_RESULT_DOCUMENT_COUNT) {
+            matched_documents_vector.resize(MAX_RESULT_DOCUMENT_COUNT);
         }
 
-        return matched_documents2;
+        return matched_documents_vector;
     }
 
 private:
@@ -139,34 +139,30 @@ private:
 
     map<int,double> FindAllDocuments(const Query& query) const {
         map<int, double> matched_documents;
+        map<string, map<int, double>> relevant_documents;
 
-        map<string, map<int, double>> true_documents_;
-
-        for (auto &word : query.query_words_)
+        for (auto & query_word : query.query_words_)
         {
-            if (documents_.count(word) > 0)
+            if (documents_.count(query_word) > 0)
             {
-                true_documents_[word] = documents_.at(word);
+                relevant_documents[query_word] = documents_.at(query_word);
             }
         }
 
-        for (auto &word : query.minus_words_)
+        for (auto & minus_word : query.minus_words_)
         {
-            if (true_documents_.count(word) > 0)
+            if (relevant_documents.count(minus_word) > 0)
             {
-                true_documents_.erase(word);
+                relevant_documents.erase(minus_word);
             }
         }
 
-        for (auto &[query_word, relev_pairs] : true_documents_)
-
+        for (auto &[query_word, relev_pairs] : relevant_documents)
         {
             for (auto &[document_id, tf_value] : relev_pairs)
             {
-
                 matched_documents[document_id] += tf_value * log(document_count_ / static_cast<double>(relev_pairs.size()));
             }
-
         }
         return matched_documents;
     }
