@@ -114,7 +114,7 @@ private:
 
     struct Query {
         set<string> query_words_;
-        set<string> minus_words_;
+        set<int> minus_words_;
     };
 
     vector<string> SplitIntoWordsNoStop(const string& text) const {
@@ -129,13 +129,20 @@ private:
 
     Query ParseQuery(const string& text) const {
         set<string> query_words;
-        set<string> minus_words;
+        set<int> minus_words;
 
         for (string& word : SplitIntoWordsNoStop(text)) {
             if (ParseQueryWord(word))
                 query_words.insert(word);
             else
-                minus_words.insert(word.erase(0, 1));
+            {
+                auto it = documents_.find(word.erase(0,1));
+                if (it != documents_.end()) {
+                    for (auto& [document_id, value] : it->second) {
+                        minus_words.insert(document_id);
+                    }
+                }
+            }         
         }
 
         return { query_words, minus_words };
@@ -158,19 +165,12 @@ private:
             }
         }
 
-        for (auto& minus_word : query.minus_words_)
-        {
-            if (relevant_documents.count(minus_word) > 0)
-            {
-                relevant_documents.erase(minus_word);
-            }
-        }
-
         for (auto& [query_word, relev_pairs] : relevant_documents)
         {
             for (auto& [document_id, tf_value] : relev_pairs)
             {
-                matched_documents[document_id] += tf_value * CalculateIdf(static_cast<int>(relev_pairs.size()));
+                if (!query.minus_words_.count(document_id))
+                    matched_documents[document_id] += tf_value * CalculateIdf(static_cast<int>(relev_pairs.size()));
             }
         }
         return matched_documents;
