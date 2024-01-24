@@ -133,9 +133,9 @@ private:
 
         for (string& word : SplitIntoWordsNoStop(text)) {
             if (ParseQueryWord(word))
-                minus_words.insert(word.erase(0, 1));
-            else
                 query_words.insert(word);
+            else
+                minus_words.insert(word.erase(0, 1));
         }
 
         return { query_words, minus_words };
@@ -143,7 +143,7 @@ private:
 
     bool ParseQueryWord(const string& query_word) const
     {
-        return query_word[0] == '-';
+        return query_word[0] != '-';
     }
 
     map<int, double> FindAllDocuments(const Query& query) const {
