@@ -40,24 +40,6 @@ vector<int> ReadLineWithRatings() {
 	return ratings;
 }
 
-int ComputeAverageRating(const vector<int>& ratings) {
-
-	if (ratings.empty())
-	{
-		return 0;
-	}
-
-	int sum = std::accumulate(ratings.begin(), ratings.end(), 0);
-
-	if (sum == 0)
-	{
-		return 0;
-	}
-
-	return sum / static_cast<int>(ratings.size());
-}
-
-
 vector<string> SplitIntoWords(const string& text) {
 	vector<string> words;
 	string word;
@@ -115,6 +97,13 @@ public:
 
 			documents_[pair.first][document_id] = pair.second / static_cast<double>(words.size());
 		}
+	}
+
+	static int ComputeAverageRating(const vector<int>& ratings) {
+		if (ratings.empty()) return 0;
+		int sum = std::accumulate(ratings.begin(), ratings.end(), 0);
+		if (sum == 0) return 0;
+		return sum / static_cast<int>(ratings.size());
 	}
 
 	vector<Document> FindTopDocuments(const string& raw_query) const {
