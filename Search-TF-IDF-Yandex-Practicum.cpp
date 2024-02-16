@@ -161,7 +161,7 @@ public:
 							matched_strings.insert(query_word);
 					}
 
-					catch (std::out_of_range ex)
+					catch (std::out_of_range &ex)
 					{
 						continue;
 					}
