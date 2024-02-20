@@ -147,21 +147,10 @@ public:
 
 		set<string> matched_strings;
 
-		if (!query.minus_words_.count(document_id))
-		{
-			for (const auto& query_word : query.query_words_)
-			{
-				if (documents_.count(query_word) > 0)
-				{
-					try {
-						if (documents_.at(query_word).at(document_id))
-							matched_strings.insert(query_word);
-					}
-
-					catch (std::out_of_range& ex)
-					{
-						continue;
-					}
+		if (!query.minus_words_.count(document_id)) {
+			for (const auto& query_word : query.query_words_) {
+				if (documents_.count(query_word) > 0 && documents_.at(query_word).count(document_id)) {
+					matched_strings.insert(query_word);
 				}
 			}
 		}
@@ -266,10 +255,8 @@ SearchServer CreateSearchServer() {
 	const int document_count = ReadLineWithNumber();
 
 	for (int document_id = 0; document_id < document_count; ++document_id) {
-
 		auto doc = ReadLine();
 		auto doc_ratings = ReadLineWithRatings();
-
 		search_server.AddDocument(document_id, doc, DocumentStatus::ACTUAL, doc_ratings);
 	}
 
