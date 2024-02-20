@@ -15,9 +15,7 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
-
 const double EPSILON = 1e-6;
-
 
 enum class DocumentStatus {
 	ACTUAL,
@@ -127,15 +125,7 @@ public:
 	}
 
 	template<typename T> vector<Document> FindTopDocuments(const string& raw_query, T filter_func) const {
-		auto matched_documents = FindAllDocuments(ParseQuery(raw_query), filter_func);
-
-		vector<Document> top_documents;
-		top_documents.reserve(matched_documents.size());
-
-		for (auto& [document_id, relev] : matched_documents)
-		{
-			top_documents.push_back({ document_id, relev, document_ratings_and_status.at(document_id).rating });
-		}
+		auto top_documents = FindAllDocuments(ParseQuery(raw_query), filter_func);
 
 		sort( top_documents.begin(), top_documents.end(),
 			[](const Document& lhs, const Document& rhs) {
@@ -162,7 +152,7 @@ public:
 
 		if (!query.minus_words_.count(document_id))
 		{
-			for (auto& query_word : query.query_words_)
+			for (const auto& query_word : query.query_words_)
 			{
 				if (documents_.count(query_word) > 0)
 				{
@@ -185,17 +175,16 @@ public:
 	}
 
 private:
-
-	struct DocumentAttributes {
-
-		int rating;
-		DocumentStatus status;
-	};
-
 	int documents_count_ = 0;
 
 	map<string, map<int, double>> documents_;
 	set<string> stop_words_;
+
+	struct DocumentAttributes {
+		int rating;
+		DocumentStatus status;
+	};
+
 	map<int, DocumentAttributes> document_ratings_and_status;
 
 	struct Query {
@@ -221,10 +210,10 @@ private:
 			if (ParseQueryWord(word))
 				query_words.insert(word);
 			else
-			{
+				{
 				auto it = documents_.find(word.erase(0, 1));
 				if (it != documents_.end()) {
-					for (auto& [document_id, value] : it->second) {
+					for (const auto& [document_id, value] : it->second) {
 						minus_words.insert(document_id);
 					}
 				}
@@ -238,31 +227,35 @@ private:
 	{
 		return query_word[0] != '-';
 	}
-	template<typename T> map<int, double> FindAllDocuments(const Query& query, const T& filter_func) const {
+
+	template<typename T> vector<Document> FindAllDocuments(const Query& query, const T& filter_func) const {
 		map<int, double> matched_documents;
 		map<string, map<int, double>> relevant_documents;
 
-		for (auto& query_word : query.query_words_)
-		{
-			if (documents_.count(query_word))
-			{
+		for (const auto& query_word : query.query_words_) {
+			if (documents_.count(query_word)) {
 				relevant_documents[query_word] = documents_.at(query_word);
 			}
 		}
 
-		for (auto& [query_word, relev_pairs] : relevant_documents)
-		{
-			for (auto& [document_id, tf_value] : relev_pairs)
-			{
+		for (const auto& [query_word, relev_pairs] : relevant_documents) {
+			for (const auto& [document_id, tf_value] : relev_pairs) {
 				if (!query.minus_words_.count(document_id) && filter_func(document_id, document_ratings_and_status.at(document_id).status, document_ratings_and_status.at(document_id).rating))
 					matched_documents[document_id] += tf_value * CalculateIdf(static_cast<int>(relev_pairs.size()));
 			}
 		}
-		return matched_documents;
+
+		vector<Document> top_documents;
+		top_documents.reserve(matched_documents.size());
+
+		for (const auto& [document_id, document_relevance] : matched_documents) {
+			top_documents.push_back({ document_id, document_relevance, document_ratings_and_status.at(document_id).rating });
+		}
+
+		return top_documents;
 	}
 
-	double CalculateIdf(int documents_with_word_count) const
-	{
+	double CalculateIdf(int documents_with_word_count) const {
 		return log(static_cast<double>(documents_count_) / documents_with_word_count);
 	}
 };
