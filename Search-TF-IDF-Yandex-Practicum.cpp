@@ -1,7 +1,4 @@
-﻿// Решите загадку: Сколько чисел от 1 до 1000 содержат как минимум одну цифру 3?
-// Напишите ответ здесь: погуглил, ответ 271
-
-#include <algorithm>
+﻿#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -10,7 +7,6 @@
 #include <utility>
 #include <vector>
 #include <numeric>
-#include <functional>
 
 using namespace std;
 
@@ -104,35 +100,36 @@ public:
 		document_ratings_and_status[document_id].status = status;
 
 		const vector<string> documentWords = SplitIntoWordsNoStop(document);
+		const double wordsCount = 1 / static_cast<double>(documentWords.size());
 
 		map<std::string, int> countMap;
 
 		for (const auto& word : documentWords) {
-			countMap[word]++;
-		}
-
-		for (const auto& [word, count] : countMap) {
-
-			documents_[word][document_id] = count / static_cast<double>(documentWords.size());
+			documents_[word][document_id] += wordsCount;
 		}
 	}
 
 	static int ComputeAverageRating(const vector<int>& ratings) {
-		if (ratings.empty()) return 0;
+		if (ratings.empty()) {
+			return 0;
+		}
 		int sum = std::accumulate(ratings.begin(), ratings.end(), 0);
-		if (sum == 0) return 0;
+		if (sum == 0) {
+			return 0;
+		}
 		return sum / static_cast<int>(ratings.size());
 	}
 
-	template<typename T> vector<Document> FindTopDocuments(const string& raw_query, T filter_func) const {
+	template<typename T>
+	vector<Document> FindTopDocuments(const string& raw_query, T filter_func) const {
 		auto top_documents = FindAllDocuments(ParseQuery(raw_query), filter_func);
 
-		sort( top_documents.begin(), top_documents.end(),
+		sort(top_documents.begin(), top_documents.end(),
 			[](const Document& lhs, const Document& rhs) {
 				return (abs(lhs.relevance - rhs.relevance) < EPSILON) ? lhs.rating > rhs.rating : lhs.relevance > rhs.relevance;
 			});
 
-		if (static_cast<int>( top_documents.size()) > MAX_RESULT_DOCUMENT_COUNT) {
+		if (static_cast<int>(top_documents.size()) > MAX_RESULT_DOCUMENT_COUNT) {
 			top_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
 		}
 
@@ -207,10 +204,10 @@ private:
 		set<int> minus_words;
 
 		for (string& word : SplitIntoWordsNoStop(text)) {
-			if (ParseQueryWord(word))
+			if (ParseQueryWord(word)) {
 				query_words.insert(word);
-			else
-				{
+			}
+			else {
 				auto it = documents_.find(word.erase(0, 1));
 				if (it != documents_.end()) {
 					for (const auto& [document_id, value] : it->second) {
@@ -228,7 +225,8 @@ private:
 		return query_word[0] != '-';
 	}
 
-	template<typename T> vector<Document> FindAllDocuments(const Query& query, const T& filter_func) const {
+	template<typename T>
+	vector<Document> FindAllDocuments(const Query& query, const T& filter_func) const {
 		map<int, double> matched_documents;
 		map<string, map<int, double>> relevant_documents;
 
@@ -272,7 +270,7 @@ SearchServer CreateSearchServer() {
 		auto doc = ReadLine();
 		auto doc_ratings = ReadLineWithRatings();
 
-		//search_server.AddDocument(document_id, doc, doc_ratings);
+		search_server.AddDocument(document_id, doc, DocumentStatus::ACTUAL, doc_ratings);
 	}
 
 	return search_server;
