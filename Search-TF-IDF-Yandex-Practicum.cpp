@@ -81,14 +81,14 @@ struct Document {
 class SearchServer {
 
 public:
-	SearchServer(){}
-	SearchServer(const vector<string> &stop_words) : stop_words_(set<string>(stop_words.begin(), stop_words.end()))
+	SearchServer() {}
+	SearchServer(const vector<string>& stop_words) : stop_words_(set<string>(stop_words.begin(), stop_words.end()))
 	{}
-	SearchServer(const set<string> &stop_words) : stop_words_(stop_words)
+	SearchServer(const set<string>& stop_words) : stop_words_(stop_words)
 	{}
-	SearchServer(const string & stop_words) {
+	SearchServer(const string& stop_words) {
 		auto words = SplitIntoWords(stop_words);
-		stop_words_ = set<string> (words.begin(), words.end());
+		stop_words_ = set<string>(words.begin(), words.end());
 	}
 
 	int GetDocumentCount() const
@@ -151,13 +151,9 @@ public:
 
 	template<typename T>
 	[[nodiscard]] bool FindTopDocuments(const string& raw_query, T filter_func, vector<Document>& result) const {
-
-		if (!IsValidWord(raw_query))
-			return false;
-
 		Query query;
 
-		if (ParseQuery(raw_query, query))
+		if (!ParseQuery(raw_query, query))
 			return false;
 
 		auto top_documents = FindAllDocuments(query, filter_func);
@@ -172,7 +168,7 @@ public:
 		}
 
 		result = top_documents;
-		return true; 
+		return true;
 	}
 
 	[[nodiscard]] bool FindTopDocuments(const string& raw_query, DocumentStatus documentStatus, vector<Document>& result) const {
@@ -187,13 +183,9 @@ public:
 
 	[[nodiscard]] bool MatchDocument(const string& raw_query, int document_id,
 		tuple<vector<string>, DocumentStatus>& result) const {
-
-		if (!IsValidWord(raw_query))
-			return false;
-
 		Query query;
 
-		if (ParseQuery(raw_query, query))
+		if (!ParseQuery(raw_query, query))
 			return false;
 
 		set<string> matched_strings;
@@ -209,7 +201,7 @@ public:
 
 		result = tuple(matched_words_vector, document_ratings_and_status.at(document_id).status);
 
-		return true ;
+		return true;
 	}
 
 private:
@@ -249,12 +241,16 @@ private:
 		return words;
 	}
 
-	bool ParseQuery(const string& text, Query &result) const {
+	bool ParseQuery(const string& text, Query& result) const {
+
+		if (!IsValidWord(text))
+			return false;
+
 		set<string> query_words;
 		set<int> minus_words;
 
 		for (string& word : SplitIntoWordsNoStop(text)) {
-			if(word == "-")
+			if (word == "-")
 				return false;
 			if (ParseQueryWord(word)) {
 				query_words.insert(word);
