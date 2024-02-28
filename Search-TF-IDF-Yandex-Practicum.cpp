@@ -73,11 +73,23 @@ struct Document {
 	int id;
 	double relevance;
 	int rating;
+
+	Document() : id(0), relevance(0), rating(0) {}
+	Document(int id_, double relevance_, int _rating) : id(id_), relevance(relevance_), rating(_rating) {}
 };
 
 class SearchServer {
 
 public:
+	SearchServer(){}
+	SearchServer(const vector<string> &stop_words) : stop_words_(set<string>(stop_words.begin(), stop_words.end()))
+	{}
+	SearchServer(const set<string> &stop_words) : stop_words_(stop_words)
+	{}
+	SearchServer(const string & stop_words) {
+		auto words = SplitIntoWords(stop_words);
+		stop_words_ = set<string> (words.begin(), words.end());
+	}
 
 	int GetDocumentCount() const
 	{
