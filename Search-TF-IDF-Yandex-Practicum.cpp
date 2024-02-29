@@ -274,10 +274,11 @@ private:
 		}
 
 		for (const auto& [query_word, relev_pairs] : relevant_documents) {
+			double idf = CalculateIdf(static_cast<int>(relev_pairs.size()));
 			for (const auto& [document_id, tf_value] : relev_pairs) {
 				const auto& [rating, status] = document_ratings_and_status.at(document_id);
 				if (!query.minus_words_.count(document_id) && filter_func(document_id, status, rating))
-					matched_documents[document_id] += tf_value * CalculateIdf(static_cast<int>(relev_pairs.size()));
+					matched_documents[document_id] += tf_value * idf;
 			}
 		}
 
@@ -318,58 +319,43 @@ void PrintDocument(const Document& document) {
 int main() {
 	setlocale(LC_ALL, "Russian");
 
-
-
-	SearchServer search_server;
-
-
-	search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-	search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-	cout << "ACTUAL by default:"s << endl;
-	for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
-		PrintDocument(document);
+	try {
+		// SearchServer search_server("и \x0A в на"s);
+		SearchServer search_server;
+		search_server.FindTopDocuments("--прив");
 	}
 
+	catch (invalid_argument& ex) {
+		cout << "Ошибка - " << ex.what() << endl;
+	}
+	catch (out_of_range& ex) {
+		cout << "Ошибка - " << ex.what() << endl;
+	}
 
-	//try {
-	//	// SearchServer search_server("и \x0A в на"s);
-	//	SearchServer search_server;
-	//	search_server.FindTopDocuments("--прив");
-	//}
+	try {
+		SearchServer search_server("и в на"s);
+		search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
+		search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+		search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
+		search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
+		cout << "ACTUAL by default:"s << endl;
+		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
+			PrintDocument(document);
+		}
+		cout << "BANNED:"s << endl;
+		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)) {
+			PrintDocument(document);
+		}
+		cout << "Even ids:"s << endl;
+		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })) {
+			PrintDocument(document);
+		}
+	}
 
-	//catch (invalid_argument& ex) {
-	//	cout << "Ошибка - " << ex.what() << endl;
-	//}
-	//catch (out_of_range& ex) {
-	//	cout << "Ошибка - " << ex.what() << endl;
-	//}
-
-	//try {
-	//	SearchServer search_server("и в на"s);
-	//	search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-	//	search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-	//	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-	//	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-	//	cout << "ACTUAL by default:"s << endl;
-	//	for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
-	//		PrintDocument(document);
-	//	}
-	//	cout << "BANNED:"s << endl;
-	//	for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)) {
-	//		PrintDocument(document);
-	//	}
-	//	cout << "Even ids:"s << endl;
-	//	for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })) {
-	//		PrintDocument(document);
-	//	}
-	//}
-
-	//catch (invalid_argument& ex) {
-	//	cout << "Ошибка - " << ex.what() << endl;
-	//}
-	//catch (out_of_range& ex) {
-	//	cout << "Ошибка - " << ex.what() << endl;
-	//}
+	catch (invalid_argument& ex) {
+		cout << "Ошибка - " << ex.what() << endl;
+	}
+	catch (out_of_range& ex) {
+		cout << "Ошибка - " << ex.what() << endl;
+	}
 }
