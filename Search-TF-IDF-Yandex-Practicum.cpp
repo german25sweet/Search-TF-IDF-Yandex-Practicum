@@ -98,33 +98,32 @@ public:
 	}
 
 	void SetStopWords(const string& text) {
-		if(!IsValidWord(text))
-			throw invalid_argument("The word from StopWords is not valid");
+		if (!IsValidWord(text))
+			throw invalid_argument("Стоп слово содержит недопустимые символы");
 		for (const string& word : SplitIntoWords(text)) {
 			stop_words_.insert(word);
 		}
 	}
 
-	void SetStopWords(const set<string> & stop_words) {
+	void SetStopWords(const set<string>& stop_words) {
 		if (!IsValidWords(stop_words))
-			throw invalid_argument("The word from StopWords is not valid");
+			throw invalid_argument("Стоп слово содержит недопустимые символы");
 		stop_words_ = stop_words;
 	}
 	void SetStopWords(const vector<string>& stop_words) {
 		if (!IsValidWords(stop_words))
-			throw invalid_argument("The word from StopWords is not valid");
-		stop_words_ = set<string>{ stop_words.begin(),stop_words.end()};
+			throw invalid_argument("Стоп слово содержит недопустимые символы");
+		stop_words_ = set<string>{ stop_words.begin(),stop_words.end() };
 	}
 
 	void AddDocument(int document_id, const string& document, DocumentStatus status,
 		const vector<int>& ratings) {
-
 		if (document_id < 0)
-			throw invalid_argument("The id("s + to_string(document_id) + ") of document that you want to add is less than 0"s);
-		if (document_ratings_and_status.count(document_id)) 
-			throw invalid_argument("Уже есть документ с id - "s + to_string(document_id));
+			throw invalid_argument("id("s + to_string(document_id) + ") меньше 0 "s);
+		if (document_ratings_and_status.count(document_id))
+			throw invalid_argument("Документ с id - "s + to_string(document_id) + "уже был добавлен");
 		if (!SearchServer::IsValidWord(document))
-			throw invalid_argument("The word from document with id " + to_string(document_id) + " is not valid");
+			throw invalid_argument(" Наличие недопустимых символов в тексте добавляемого документа с id = " + to_string(document_id));
 
 		++documents_count_;
 		documents_id.push_back(document_id);
@@ -158,7 +157,7 @@ public:
 	int GetDocumentId(int index) const {
 
 		if (index > (static_cast<int>(documents_id.size()) - 1))
-			throw out_of_range(" индекс переданного документа (" + to_string(index) + ") выходит за пределы допустимого диапазона ");
+			throw out_of_range("индекс переданного документа (" + to_string(index) + ") выходит за пределы допустимого диапазона");
 		return documents_id.at(index);
 	}
 
@@ -202,6 +201,7 @@ public:
 	}
 
 private:
+
 	int documents_count_ = 0;
 	inline static constexpr int INVALID_DOCUMENT_ID = -1;
 
@@ -209,7 +209,7 @@ private:
 		int rating;
 		DocumentStatus status;
 	};
-	
+
 	set<string> stop_words_;
 	vector<int> documents_id;
 	map<string, map<int, double>> documents_;
@@ -243,20 +243,20 @@ private:
 
 	Query ParseQuery(const string& text) const {
 		if (!IsValidWord(text))
-			throw invalid_argument("The word from Query contains special characters");
+			throw invalid_argument("В словах поискового запроса есть недопустимые символы");
 
 		set<string> query_words;
 		set<int> minus_words;
 
 		for (string& word : SplitIntoWordsNoStop(text)) {
 			if (word == "-")
-				throw invalid_argument("The word from Query is - ");
+				throw invalid_argument("Отсутствие текста после символа «минус» в поисковом запросе");
 			if (ParseQueryWord(word)) {
 				query_words.insert(word);
 			}
 			else {
 				if (word[1] == '-')
-					throw invalid_argument("The word from Query has two - ");
+					throw invalid_argument("Наличие более чем одного минуса у минус слов поискового запроса");
 				auto it = documents_.find(word.erase(0, 1));
 				if (it != documents_.end()) {
 					for (const auto& [document_id, value] : it->second) {
@@ -365,5 +365,5 @@ int main() {
 	}
 	catch (out_of_range& ex) {
 		cout << "Ошибка - " << ex.what() << endl;
-	}	
+	}
 }
