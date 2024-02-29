@@ -66,7 +66,6 @@ vector<string> SplitIntoWords(const string& text) {
 	if (!word.empty()) {
 		words.push_back(word);
 	}
-
 	return words;
 }
 
@@ -206,8 +205,22 @@ private:
 	int documents_count_ = 0;
 	inline static constexpr int INVALID_DOCUMENT_ID = -1;
 
+	struct DocumentAttributes {
+		int rating;
+		DocumentStatus status;
+	};
+	
+	set<string> stop_words_;
+	vector<int> documents_id;
+	map<string, map<int, double>> documents_;
+	map<int, DocumentAttributes> document_ratings_and_status;
+
+	struct Query {
+		set<string> query_words_;
+		set<int> minus_words_;
+	};
+
 	static bool IsValidWord(const string& word) {
-		// A valid word must not contain special characters
 		return none_of(word.begin(), word.end(), [](char c) {
 			return c >= '\0' && c < ' ';
 			});
@@ -217,23 +230,6 @@ private:
 	static bool IsValidWords(const WordContainer& words) {
 		return all_of(words.begin(), words.end(), IsValidWord);
 	}
-
-	map<string, map<int, double>> documents_;
-	set<string> stop_words_;
-
-	struct DocumentAttributes {
-		int rating;
-		DocumentStatus status;
-	};
-
-	map<int, DocumentAttributes> document_ratings_and_status;
-
-	vector<int> documents_id;
-
-	struct Query {
-		set<string> query_words_;
-		set<int> minus_words_;
-	};
 
 	vector<string> SplitIntoWordsNoStop(const string& text) const {
 		vector<string> words;
@@ -246,7 +242,6 @@ private:
 	}
 
 	Query ParseQuery(const string& text) const {
-
 		if (!IsValidWord(text))
 			throw invalid_argument("The word from Query contains special characters");
 
@@ -273,8 +268,7 @@ private:
 		return { query_words, minus_words };
 	}
 
-	bool ParseQueryWord(const string& query_word) const
-	{
+	bool ParseQueryWord(const string& query_word) const {
 		return query_word[0] != '-';
 	}
 
