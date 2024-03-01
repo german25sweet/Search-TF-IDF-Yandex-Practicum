@@ -88,36 +88,27 @@ public:
 		SetStopWords(stop_words);
 	}
 
+	explicit SearchServer(const string& stop_words) {
+		SetStopWords(stop_words);
+	}
+
 	int GetDocumentCount() const
 	{
-		return documents_count_;
-	}
-
-	void SetStopWords(const string& text) {
-		if (!IsValidWord(text))
-			throw invalid_argument("Стоп слово содержит недопустимые символы");
-		for (const string& word : SplitIntoWords(text)) {
-			stop_words_.insert(word);
-		}
-	}
-
-	template <typename StringContainer>
-	void SetStopWords(const StringContainer& stop_words) {
-		if (!IsValidWords(stop_words))
-			throw invalid_argument("Стоп слово содержит недопустимые символы");
-		stop_words_ = set<string>{ stop_words.begin(),stop_words.end() };
+		return static_cast<int>(documents_id.size());
 	}
 
 	void AddDocument(int document_id, const string& document, DocumentStatus status,
 		const vector<int>& ratings) {
-		if (document_id < 0)
+		if (document_id < 0) {
 			throw invalid_argument("id("s + to_string(document_id) + ") меньше 0 "s);
-		if (document_ratings_and_status.count(document_id))
+		}
+		if (document_ratings_and_status.count(document_id)) {
 			throw invalid_argument("Документ с id - "s + to_string(document_id) + "уже был добавлен");
-		if (!IsValidWord(document))
+		}
+		if (!IsValidWord(document)) {
 			throw invalid_argument(" Наличие недопустимых символов в тексте добавляемого документа с id = " + to_string(document_id));
+		}
 
-		++documents_count_;
 		documents_id.push_back(document_id);
 
 		int rating = ComputeAverageRating(ratings);
@@ -139,16 +130,10 @@ public:
 			return 0;
 		}
 		int sum = std::accumulate(ratings.begin(), ratings.end(), 0);
-		if (sum == 0) {
-			return 0;
-		}
 		return sum / static_cast<int>(ratings.size());
 	}
 
 	int GetDocumentId(int index) const {
-
-		if (index > (static_cast<int>(documents_id.size()) - 1))
-			throw out_of_range("индекс переданного документа (" + to_string(index) + ") выходит за пределы допустимого диапазона");
 		return documents_id.at(index);
 	}
 
@@ -193,8 +178,6 @@ public:
 
 private:
 
-	int documents_count_ = 0;
-
 	struct DocumentAttributes {
 		int rating;
 		DocumentStatus status;
@@ -209,6 +192,21 @@ private:
 		set<string> query_words_;
 		set<int> minus_words_;
 	};
+
+	void SetStopWords(const string& text) {
+		if (!IsValidWord(text)) {
+			throw invalid_argument("Стоп слово содержит недопустимые символы");
+		}
+		SetStopWords(SplitIntoWords(text));
+	}
+
+	template <typename StringContainer>
+	void SetStopWords(const StringContainer& stop_words) {
+		if (!IsValidWords(stop_words)) {
+			throw invalid_argument("Стоп слово содержит недопустимые символы");
+		}
+		stop_words_ = set<string>{ stop_words.begin(),stop_words.end() };
+	}
 
 	static bool IsValidWord(const string& word) {
 		return none_of(word.begin(), word.end(), [](char c) {
@@ -293,7 +291,7 @@ private:
 	}
 
 	double CalculateIdf(int documents_with_word_count) const {
-		return log(static_cast<double>(documents_count_) / documents_with_word_count);
+		return log(static_cast<double>(GetDocumentCount()) / documents_with_word_count);
 	}
 };
 
@@ -322,7 +320,8 @@ int main() {
 	try {
 		// SearchServer search_server("и \x0A в на"s);
 		SearchServer search_server;
-		search_server.FindTopDocuments("--прив");
+		search_server.GetDocumentId(20);
+		//search_server.FindTopDocuments("--прив");
 	}
 
 	catch (invalid_argument& ex) {
