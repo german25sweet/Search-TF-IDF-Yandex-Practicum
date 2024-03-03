@@ -172,7 +172,7 @@ public:
 		}
 		vector <string> matched_words_vector{ matched_strings.begin(), matched_strings.end() };
 
-		return tuple(matched_words_vector, document_ratings_and_status.at(document_id).status);;
+		return { { matched_words_vector}, {document_ratings_and_status.at(document_id).status  } };
 	}
 
 private:
@@ -221,6 +221,12 @@ private:
 		return words;
 	}
 
+	struct QueryWord {
+		string word;
+		bool is_query_word = false;
+		bool is_minus_word = false;
+	};
+
 	Query ParseQuery(const string& text) const {
 		if (!IsValidWord(text)) {
 			throw invalid_argument("В словах поискового запроса есть недопустимые символы");
@@ -229,19 +235,15 @@ private:
 		set<int> minus_words;
 
 		for (const auto& raw_query_word : SplitIntoWords(text)) {
-			bool isStopWord = false;
-			auto query_word = ParseQueryWord(raw_query_word, isStopWord);
+			auto query = ParseQueryWord(raw_query_word);
 
-			if (!isStopWord) {
-				if (!stop_words_.count(query_word)) {
-					query_words.insert(query_word);
+			if (query.is_query_word) {
+				if (!stop_words_.count(query.word)) {
+					query_words.insert(query.word);
 				}
 			}
-			else {
-				if (query_word[0] == '-') {
-					throw invalid_argument("Наличие более чем одного минуса у минус слов поискового запроса");
-				}
-				if (auto it = documents_.find(query_word); it != documents_.end() && !stop_words_.count(query_word)) {
+			else if (query.is_minus_word) {
+				if (auto it = documents_.find(query.word); it != documents_.end() && !stop_words_.count(query.word)) {
 					for (const auto& [document_id, value] : it->second) {
 						minus_words.insert(document_id);
 					}
@@ -251,15 +253,19 @@ private:
 		return { query_words,minus_words };
 	}
 
-	string ParseQueryWord(const string& raw_query_word, bool& isStopWord) const {
+
+	QueryWord ParseQueryWord(const string& raw_query_word) const {
 		if (raw_query_word == "-") {
 			throw invalid_argument("Отсутствие текста после символа «минус» в поисковом запросе");
 		}
 		if (raw_query_word[0] != '-') {
-			return raw_query_word;
+			return { raw_query_word, true, false };
 		}
 		else {
-			return raw_query_word.substr(1);
+			if (raw_query_word[1] == '-') {
+				throw invalid_argument("Наличие более чем одного минуса у минус слов поискового запроса");
+			}
+			return { raw_query_word.substr(1), false, true };
 		}
 	}
 
