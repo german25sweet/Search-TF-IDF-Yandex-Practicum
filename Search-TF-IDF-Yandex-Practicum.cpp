@@ -223,8 +223,8 @@ private:
 
 	struct QueryWord {
 		string word;
-		bool is_query_word = false;
-		bool is_minus_word = false;
+		bool is_stop = false;
+		bool is_minus = false;
 	};
 
 	Query ParseQuery(const string& text) const {
@@ -237,12 +237,12 @@ private:
 		for (const auto& raw_query_word : SplitIntoWords(text)) {
 			auto query = ParseQueryWord(raw_query_word);
 
-			if (query.is_query_word) {
+			if (query.is_stop) {
 				if (!stop_words_.count(query.word)) {
 					query_words.insert(query.word);
 				}
 			}
-			else if (query.is_minus_word) {
+			else if (query.is_minus) {
 				if (auto it = documents_.find(query.word); it != documents_.end() && !stop_words_.count(query.word)) {
 					for (const auto& [document_id, value] : it->second) {
 						minus_words.insert(document_id);
