@@ -8,7 +8,7 @@
 #include <vector>
 #include <numeric>
 #include <stdexcept>
-
+#include <queue>
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
@@ -304,32 +304,175 @@ private:
 	}
 };
 
-void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status) {
-	cout << "{ "s
-		<< "document_id = "s << document_id << ", "s
-		<< "status = "s << static_cast<int>(status) << ", "s
-		<< "words ="s;
-	for (const string& word : words) {
-		cout << ' ' << word;
-	}
-	cout << "}"s << endl;
-}
-void PrintDocument(const Document& document) {
-	cout << "{ "s
+static ostream& operator <<(ostream& out, const Document& document) {
+	out << "{ "s
 		<< "document_id = "s << document.id << ", "s
 		<< "relevance = "s << document.relevance << ", "s
 		<< "rating = "s << document.rating
-		<< " }"s << endl;
+		<< " }"s;
+	return out;
 }
+
+static ostream& operator <<(ostream& out, const vector<Document>& documents) {
+	for (const auto& document : documents)
+	{
+		out << document;
+	}
+	return out;
+}
+
+template <typename Iterator>
+class IteratorRange
+{
+public:
+	IteratorRange(Iterator begin, Iterator end) : begin_(begin), end_(end) {}
+	IteratorRange() {}
+
+	Iterator begin_;
+	Iterator end_;
+
+private:
+};
+
+template <typename Iterator>
+class Paginator {
+
+public:
+	Paginator(Iterator begin, Iterator end, size_t page_size) {
+
+		int pages = round(double((distance(begin, end))) / page_size);
+
+		Iterator mid = begin;
+
+		for (int i = 0; i < pages - 1; ++i)
+		{
+			its.push_back({ mid, mid + page_size });
+			advance(mid, page_size);
+		}
+
+		its.push_back({ mid, end });
+	}
+
+
+	typename vector<IteratorRange<Iterator>> ::const_iterator begin() const {
+		return its.cbegin();
+	};
+	typename vector<IteratorRange<Iterator>> ::const_iterator end() const {
+		return its.cend();
+	};
+
+private:
+	vector<IteratorRange<Iterator>> its;
+};
+
+template <typename Iterator>
+static ostream& operator <<(ostream& out, const IteratorRange<Iterator>& document) {
+
+	vector <typename Iterator::value_type> result{ document.begin_, document.end_ };
+
+	cout << result;
+	return out;
+}
+
+template <typename Container>
+auto Paginate(const Container& c, size_t page_size) {
+	return Paginator(begin(c), end(c), page_size);
+}
+
+#include <deque>
+#include <functional> // для std::function
+
+#include <deque>
+#include <functional> // для std::function
+#include <cstdint> // для uint64_t
+
+class RequestQueue {
+public:
+	explicit RequestQueue(const SearchServer& search_server) : search_server_(search_server), no_results_requests_(0), current_time_(0) {}
+
+	// Обертка для метода поиска с предикатом документа
+	template <typename DocumentPredicate>
+	vector<Document> AddFindRequest(const string& raw_query, DocumentPredicate document_predicate) {
+		auto results = search_server_.FindTopDocuments(raw_query, document_predicate);
+		AddRequest(results.empty() ? 0 : results.size());
+		return results;
+	}
+
+	// Обертка для метода поиска с заданным статусом документа
+	vector<Document> AddFindRequest(const string& raw_query, DocumentStatus status) {
+		auto results = search_server_.FindTopDocuments(raw_query, status);
+		AddRequest(results.empty() ? 0 : results.size());
+		return results;
+	}
+
+	// Обертка для метода поиска без дополнительных условий
+	vector<Document> AddFindRequest(const string& raw_query) {
+		auto results = search_server_.FindTopDocuments(raw_query);
+		AddRequest(results.empty() ? 0 : results.size());
+		return results;
+	}
+
+	// Получение количества запросов без результатов за последние сутки
+	int GetNoResultRequests() const {
+		return no_results_requests_;
+	}
+
+private:
+	struct QueryResult {
+		uint64_t timestamp;
+		int results;
+	};
+
+	queue<QueryResult> requests_;
+	const SearchServer& search_server_;
+	int no_results_requests_ = 0;
+	uint64_t current_time_ = 0;
+	const static int min_in_day_ = 1440;
+
+	// Обновление очереди запросов
+	void AddRequest(int results_num) {
+		// Новый запрос - новая секунда
+		++current_time_;
+		// Удаляем все результаты поиска, которые устарели
+		while (!requests_.empty() && current_time_ - requests_.front().timestamp >= min_in_day_) {
+			if (requests_.front().results == 0) {
+				--no_results_requests_;
+			}
+			requests_.pop();
+		}
+		// Сохраняем новый результат поиска
+		requests_.push({ current_time_, results_num });
+		if (results_num == 0) {
+			++no_results_requests_;
+		}
+	}
+};
+
 
 int main() {
 	setlocale(LC_ALL, "Russian");
 
 	try {
-		//SearchServer search_server("и \x0A в на"s);
-		SearchServer search_server;
-		search_server.GetDocumentId(20);
-		search_server.FindTopDocuments("--прив");
+		SearchServer search_server("and in at"s);
+		RequestQueue request_queue(search_server);
+		search_server.AddDocument(1, "curly cat curly tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+		search_server.AddDocument(2, "curly dog and fancy collar"s, DocumentStatus::ACTUAL, { 1, 2, 3 });
+		search_server.AddDocument(3, "big cat fancy collar "s, DocumentStatus::ACTUAL, { 1, 2, 8 });
+		search_server.AddDocument(4, "big dog sparrow Eugene"s, DocumentStatus::ACTUAL, { 1, 3, 2 });
+		search_server.AddDocument(5, "big dog sparrow Vasiliy"s, DocumentStatus::ACTUAL, { 1, 1, 1 });
+		// 1439 запросов с нулевым результатом
+		for (int i = 0; i < 1439; ++i) {
+			request_queue.AddFindRequest("empty request"s);
+		}
+		// все еще 1439 запросов с нулевым результатом
+		request_queue.AddFindRequest("curly dog"s);
+		// новые сутки, первый запрос удален, 1438 запросов с нулевым результатом
+		request_queue.AddFindRequest("big collar"s);
+		// первый запрос удален, 1437 запросов с нулевым результатом
+		request_queue.AddFindRequest("sparrow"s);
+		cout << "Total empty requests: "s << request_queue.GetNoResultRequests() << endl;
+
+
 	}
 
 	catch (invalid_argument& ex) {
@@ -339,30 +482,5 @@ int main() {
 		cout << "Ошибка - " << ex.what() << endl;
 	}
 
-	try {
-		SearchServer search_server("и в на"s);
-		search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-		search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-		search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-		search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-		cout << "ACTUAL by default:"s << endl;
-		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
-			PrintDocument(document);
-		}
-		cout << "BANNED:"s << endl;
-		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)) {
-			PrintDocument(document);
-		}
-		cout << "Even ids:"s << endl;
-		for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })) {
-			PrintDocument(document);
-		}
-	}
-
-	catch (invalid_argument& ex) {
-		cout << "Ошибка - " << ex.what() << endl;
-	}
-	catch (out_of_range& ex) {
-		cout << "Ошибка - " << ex.what() << endl;
-	}
 }
+
